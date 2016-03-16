@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+
+  <!-- Author: Cássio M. M. Pereira <cassiomartini@gmail.com> -->
+  <!-- based on: http://bl.ocks.org/weiglemc/6185069 -->
+  <!-- also based on  http://bl.ocks.org/mbostock/3887118 -->
+  <!-- Tooltip example from http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html -->
+  <!-- also using the slider from https://github.com/MasterMaps/d3-slider -->
+
+  <link rel="stylesheet" href="d3.slider.css" />  
+
+  <style>
+  body {
+    font: 11px sans-serif;
+  }
+
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+  }
+
+  .dot {
+    stroke: #000;
+  }
+
+  .dot2 {
+    stroke: #000;
+    fill: DeepSkyBlue;
+  }
+
+
+  .tooltip {
+    position: absolute;
+    width: 200px;
+    height: 80px;
+    pointer-events: none;
+  }
+
+  .tooltip2 {
+    position: absolute;
+    width: 200px;
+    height: 80px;
+    pointer-events: visible;
+  }
+
+  .line {
+    fill: none;
+    stroke: DeepSkyBlue;
+    stroke-width: 3px;
+  }
+
+
+  </style>
+
+  <script src="d3.min.js"></script>
+  <script src="d3.slider.js"></script>
+
+</head>
+
+<body>
+  <h1 align=left>Análise topológica das votações na Câmara dos Deputados ao longo de 2015</h1>
+
+<script>
+
+d3.select("body").append("h1").style("font-size","150%").html("<ul><li>Projeção MDS</li></ul>");
+
+var margin = {top: 20, right: 20, bottom: 30, left: 40},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+// add the tooltip area to the webpage
+var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+var tooltip2 = d3.select("body").append("div")
+    .attr("class", "tooltip2")
+    .style("opacity", 0);
+
+function typeScatter(d) {
+  d.x1 = +d.x1;
+  d.x2 = +d.x2;
+  return d;
+}
+
+// add the graph canvas to the body of the webpage
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // setup x
+  var xValue = function(d) { return d.x1;}, // data -> value
+    xScale = d3.scale.linear().range([0, width]), // value -> display
+    xMap = function(d) { return xScale(xValue(d));}, // data -> display
+    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+
+// setup y
+  var yValue = function(d) { return d.x2;}, // data -> value
+    yScale = d3.scale.linear().range([height, 0]), // value -> display
+    yMap = function(d) { return yScale(yValue(d));}, // data -> display
+    yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+  // setup fill color
+  var cValue = function(d) { return d.classe;},
+    color = d3.scale.category10();
+
+function plotProjecao(idJanela) {
+  // /d3.select("body").append("h1").text("vou adicionar a janela" + idJanela);
+ 
+  width = 960 - margin.left - margin.right,
+  height = 500 - margin.top - margin.bottom;
+
+  //d3.select("#xAxisProj").remove();
+  //d3.select("#yAxisProj").remove();
+  svg.selectAll(".dot").remove();
+  svg.selectAll("g").remove();
+
+  // load data
+  d3.csv("../dados/csv/" + idJanela+".csv", typeScatter, function(error, data) {
+
+    xScale.domain([d3.min(data, xValue) -0.1, d3.max(data, xValue) + 0.1]);
+    yScale.domain([d3.min(data, yValue) -0.1, d3.max(data, yValue) + 0.1]);
+
+    // x-axis
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .attr("id", "xAxisProj")
+        .append("text")
+        .attr("class", "label")
+        .attr("x", width)
+        .attr("y", -6)
+        .style("text-anchor", "end")
+        .text("x1");
+
+    // y-axis
+    svg.append("g")
+        .attr("id", "yAxisProj")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .attr("id", "yAxisProj")
+      .append("text")
+        .attr("class", "label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("x2");
+
+    // draw dots
+    svg.selectAll(".dot")
+        .data(data)
+      .enter().append("circle")
+      .on("mouseover", function(d) {
+            tooltip.transition()
+                 .duration(200)
+                 .style("opacity", 1);
+            tooltip.html("<font color=black><b>" + d.nome + "<br/>"
+            +"Partido: " + d.partido  + "<br/>"
+            +"<img src=fotos/" + d.ideDeputado + ".jpg alt=Deputado height=76 width=57>"
+            +"<br/>("
+            + parseFloat(xValue(d)).toFixed(2)
+            + ", " + parseFloat(yValue(d)).toFixed(2) + ")</b></font>")
+                 .style("left", (d3.event.pageX + 5) + "px")
+                 .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+            tooltip.transition()
+                 .duration(500)
+                 .style("opacity", 0);
+        })
+        .attr("class", "dot")
+        .attr("r", 5)
+        .attr("cx", xMap)
+        .attr("cy", yMap)
+        .style("fill", function(d) { return color(cValue(d));})
+        
+    // draw legend
+    var legend = svg.selectAll(".legend")
+        .data(color.domain())
+      .enter().append("g")
+        .attr("class", "legend")
+        .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+    // draw legend colored rectangles
+    legend.append("rect")
+        .attr("x", width - 18)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", color);
+
+    // draw legend text
+    legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "end")
+        .text(function(d) { return d;})
+  });
+} // fim da funcao plotProjecao
+
+plotProjecao(1);
+
+d3.select("body").append("div").style("font-size", "150%").style("padding-left", "40px").style("padding-bottom", "5px").text("Selecione a janela desejada:");
+
+d3.select("body").append("div").attr("id", "proj-slider").style("width","900px").style("left", "40px");
+
+d3.select('#proj-slider').call(d3.slider().axis(d3.svg.axis().ticks(29)).min(1).max(29).step(1).on("slide", function(evt, value) {
+       plotProjecao(value);
+  }));
+
+for(i = 0; i < 3; i++)
+  d3.select("body").append("br")
+
+d3.select("body").append("h1").style("font-size","150%").html("<ul><li>Gráfico da topologia para buracos de dimensão 1</li></ul>");
+
+d3.csv("../dados/betti-info.csv", type, function(error, data) {
+  if(error) throw error;
+  height = 200;
+
+  var x = d3.scale.linear().range([0, width]);
+  var y = d3.scale.linear().range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left");
+
+  var line = d3.svg.line()
+    .x(function(d) { return x(d.id); })
+    .y(function(d) { return y(d.dim1); });
+
+  var svg = d3.select("body").append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  x.domain(d3.extent(data, function(d) { return d.id; }));
+  y.domain(d3.extent(data, function(d) { return d.dim1; }));
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .attr("class", "label")
+      .attr("x", width-30)
+      .attr("y", -5)
+      .text("Janela");
+      //.text("Janela");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Buracos 1a dimensão");
+
+   svg.append("path")
+      .datum(data)
+      .attr("class", "line")
+      .attr("d", line);
+
+  // setup x
+  var xValue2 = function(d) { return d.id;}; // data -> value
+  var  xScale2 = d3.scale.linear().range([0, width]); // value -> display
+  var xMap2 = function(d) { return xScale2(xValue2(d));}; // data -> display
+  
+  // setup y
+  var yValue2 = function(d) { return d.dim1;}; // data -> value
+  var yScale2 = d3.scale.linear().range([height, 0]); // value -> display
+  var yMap2 = function(d) { return yScale2(yValue2(d));} // data -> display
+  
+  svg.selectAll(".dot2")
+      .data(data)
+    .enter().append("circle")
+      .attr("class", "dot2")
+      .attr("r", 3.5)
+      .attr("cx", function(d){return x(d.id);})
+      .attr("cy", function(d){return y(d.dim1);})
+      .on("mouseover", function(d) {
+          tooltip2.transition()
+               .duration(200)
+               .style("opacity", .9);
+          //tooltip.html("(" + d.id + "," + d.dim1 + ")" +"</br>" + "Hi there :-)")
+          tooltip2.html(geraHTMLproposicoes(d))
+               .style("left", (d3.event.pageX + 5) + "px")
+               .style("top", (d3.event.pageY - 28) + "px");
+      })
+       .on("mouseout", function(d) {
+           tooltip2.transition()
+                .duration(5000)
+                .style("opacity", 0);
+       });
+      
+      //.style("fill", function(d) {return "red";})
+});
+
+function geraHTMLproposicoes(d) {
+  var props =  d.propostas.split(";");
+  var urls  =  d.links.split(";");
+  //console.log(props);
+  // console.log(urls);
+  var htmlRet = "(" + d.id + "," + d.dim1 + ")" +"</br>";
+  for(i = 0; i < props.length; i++) {
+    htmlRet += "<a href=\"" +  urls[i]  + "\">" + props[i] + "</a></br>";
+  }
+  return htmlRet;
+}
+
+function type(d) {
+  d.id = +d.id;
+  d.dim0 = +d.dim0;
+  d.dim1 = +d.dim1;
+  return d;
+}
+
+</script>
+
+</body>
+</html>

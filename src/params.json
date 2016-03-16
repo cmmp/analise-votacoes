@@ -1,0 +1,7 @@
+{
+	"workingdir" : "/home/cassio/analise-votacoes/",
+	"ano" : 2015,
+	"W" : 20,
+	"slide" : 10,
+	"threshold" : 0.01
+}
